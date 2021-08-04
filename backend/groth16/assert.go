@@ -87,6 +87,7 @@ func (assert *Assert) ProverSucceeded(r1cs frontend.CompiledConstraintSystem, wi
 
 	// prover
 	proof, err := Prove(r1cs, pk, witness)
+	// fmt.Printf("ProverSucceeded(): proof: %+v\n", proof)
 	assert.NoError(err, "proving with good witness should not output an error")
 
 	// ensure random sampling; calling prove twice with same witness should produce different proof

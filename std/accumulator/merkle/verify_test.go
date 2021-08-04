@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"os"
 	"testing"
+	"fmt"
 
 	"github.com/consensys/gnark-crypto/accumulator/merkletree"
 	"github.com/consensys/gnark-crypto/ecc"
@@ -41,15 +42,16 @@ func (circuit *merkleCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSyst
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("\nDefine(): rootHash: %+v, path: %v\n\n", circuit.RootHash, circuit.Path)
 	VerifyProof(cs, hFunc, circuit.RootHash, circuit.Path, circuit.Helper)
 	return nil
 }
 
 func TestVerify(t *testing.T) {
-
 	// generate random data
 	// makes sure that each chunk of 64 bits fits in a fr modulus, otherwise there are bugs due to the padding (domain separation)
-	// TODO since when using mimc the user should be aware of this fact (otherwise one can easily finds collision), I am not sure we should take care of that in the code
+	// TODO siiii when using mimc the user should be aware of this fact (otherwise one can easily finds collision), I am not sure we should take care of that in the code
 	var buf bytes.Buffer
 	for i := 0; i < 10; i++ {
 		var leaf fr.Element
@@ -57,18 +59,28 @@ func TestVerify(t *testing.T) {
 			t.Fatal(err)
 		}
 		b := leaf.Bytes()
+		fmt.Printf("TestVerify(): b: %d, length: %d\n", b, len(b))
 		buf.Write(b[:])
 	}
 
 	// build & verify proof for an elmt in the file
-	proofIndex := uint64(0)
+	proofIndex := uint64(9)
 	segmentSize := 32
 	merkleRoot, proof, numLeaves, err := merkletree.BuildReaderProof(&buf, bn254.NewMiMC("seed"), segmentSize, proofIndex)
+
+	fmt.Printf("merkleRoot: %d, numLeaves: %d\n\n", merkleRoot, numLeaves)
+
+	for i := 0; i < len(proof); i += 1 {
+		fmt.Printf("proof[%d]: %d\n", i, proof[i])
+	}
+
 	if err != nil {
 		t.Fatal(err)
 		os.Exit(-1)
 	}
+
 	proofHelper := GenerateProofHelper(proof, proofIndex, numLeaves)
+	fmt.Printf("\nproofHelper: %d\n", proofHelper)
 
 	verified := merkletree.VerifyProof(bn254.NewMiMC("seed"), merkleRoot, proof, proofIndex, numLeaves)
 	if !verified {
@@ -82,6 +94,8 @@ func TestVerify(t *testing.T) {
 	witness.Path = make([]frontend.Variable, len(proof))
 	witness.Helper = make([]frontend.Variable, len(proof)-1)
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &circuit)
+	fmt.Printf("rootHash: %v\n", circuit.RootHash)
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,6 +107,10 @@ func TestVerify(t *testing.T) {
 	}
 	for i := 0; i < len(proof)-1; i++ {
 		witness.Helper[i].Assign(proofHelper[i])
+	}
+
+	for i := 0; i < len(witness.Path); i += 1 {
+		fmt.Printf("witness.Path[%d]: %+v\n", i, witness.Path[i])
 	}
 
 	assert := groth16.NewAssert(t)

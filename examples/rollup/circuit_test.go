@@ -18,6 +18,7 @@ package rollup
 
 import (
 	"testing"
+	"fmt"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
@@ -100,6 +101,12 @@ func (t *circuitInclusionProof) Define(curveID ecc.ID, cs *frontend.ConstraintSy
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("Define(): rootHashBefore: %+v\n merkleProofSenderBefore: %+v\n proofHelperSenderBefore: %+v\n",
+		t.RootHashesBefore[0],
+		t.MerkleProofsSenderBefore[0][:],
+		t.MerkleProofHelperSenderBefore[0][:])
+
 	merkle.VerifyProof(cs, hashFunc, t.RootHashesBefore[0], t.MerkleProofsSenderBefore[0][:], t.MerkleProofHelperSenderBefore[0][:])
 	merkle.VerifyProof(cs, hashFunc, t.RootHashesBefore[0], t.MerkleProofsReceiverBefore[0][:], t.MerkleProofHelperReceiverBefore[0][:])
 
@@ -116,14 +123,17 @@ func TestCircuitInclusionProof(t *testing.T) {
 	}
 
 	operator, users := createOperator(nbAccounts)
+	// fmt.Printf("operator, state: %+v\n", operator.State)
 
 	// read accounts involved in the transfer
 	sender, err := operator.readAccount(0)
+	fmt.Printf("\nsender: %+v\n", sender)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	receiver, err := operator.readAccount(1)
+	fmt.Printf("\nreceiver: %+v\n", receiver)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,6 +160,8 @@ func TestCircuitInclusionProof(t *testing.T) {
 	var inclusionProofCircuit circuitInclusionProof
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &inclusionProofCircuit)
 	assert.NoError(err)
+
+	fmt.Printf("\nTestCircuitInclusionProof(): Start prove\n")
 
 	assert.ProverSucceeded(r1cs, &operator.witnesses)
 

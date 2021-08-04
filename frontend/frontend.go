@@ -30,7 +30,6 @@ var ErrInputNotSet = errors.New("variable is not allocated")
 // 		if zkpID == backend.GROTH16	--> R1CS
 //		if zkpID == backend.PLONK 	--> SparseR1CS
 func Compile(curveID ecc.ID, zkpID backend.ID, circuit Circuit) (ccs CompiledConstraintSystem, err error) {
-
 	// build the constraint system (see Circuit.Define)
 	cs, err := buildCS(curveID, circuit)
 	if err != nil {

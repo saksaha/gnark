@@ -18,6 +18,7 @@ package rollup
 
 import (
 	"bytes"
+	"fmt"
 	"hash"
 	"math/big"
 
@@ -70,8 +71,10 @@ func NewOperator(nbAccounts int) Operator {
 		hFunc.Reset()
 		hFunc.Write(res.State[i*SizeAccount : i*SizeAccount+SizeAccount])
 		s := hFunc.Sum([]byte{})
+		// fmt.Printf("s: %d\n", s)
 		copy(res.HashState[i*hFunc.Size():(i+1)*hFunc.Size()], s)
 	}
+	// fmt.Printf("State: %+v\n", res.State)
 
 	res.AccountMap = make(map[string]uint64)
 	res.nbAccounts = nbAccounts
@@ -83,7 +86,6 @@ func NewOperator(nbAccounts int) Operator {
 
 // readAccount reads the account located at index i
 func (o *Operator) readAccount(i uint64) (Account, error) {
-
 	var res Account
 	err := Deserialize(&res, o.State[int(i)*SizeAccount:int(i)*SizeAccount+SizeAccount])
 	if err != nil {
@@ -95,7 +97,6 @@ func (o *Operator) readAccount(i uint64) (Account, error) {
 // updateAccount updates the state according to transfer
 // numTransfer is the number of the transfer currently handled (between 0 and batchSize)
 func (o *Operator) updateState(t Transfer, numTransfer int) error {
-
 	var posSender, posReceiver uint64
 	var ok bool
 
@@ -107,6 +108,7 @@ func (o *Operator) updateState(t Transfer, numTransfer int) error {
 	if posSender, ok = o.AccountMap[string(b[:])]; !ok {
 		return ErrNonExistingAccount
 	}
+
 	senderAccount, err := o.readAccount(posSender)
 	if err != nil {
 		return err
@@ -143,31 +145,52 @@ func (o *Operator) updateState(t Transfer, numTransfer int) error {
 	if err != nil {
 		return err
 	}
-	merkleRootBefore, proofInclusionSenderBefore, numLeaves, err := merkletree.BuildReaderProof(&buf, o.h, segmentSize, posSender)
+
+	merkleRootBefore, proofInclusionSenderBefore, numLeaves, err := merkletree.BuildReaderProof(
+		&buf, o.h, segmentSize, posSender)
+
 	if err != nil {
 		return err
 	}
-	merkletree.VerifyProof(o.h, merkleRootBefore, proofInclusionSenderBefore, posSender, numLeaves)
-	merkleProofHelperSenderBefore := merkle.GenerateProofHelper(proofInclusionSenderBefore, posSender, numLeaves)
+
+	fmt.Printf("\nupdateState(): posSender: %d, \nmerkleRootBefore: %d, \nproofInclusionSenderBefore(%d): %d\nnumLeaves: %d\nsegmentSize: %d\n\n",
+		posSender, merkleRootBefore, len(proofInclusionSenderBefore), proofInclusionSenderBefore,
+		numLeaves, segmentSize,
+	)
+
+	merkletree.VerifyProof(o.h, merkleRootBefore, proofInclusionSenderBefore,
+		posSender, numLeaves)
+
+	merkleProofHelperSenderBefore := merkle.GenerateProofHelper(
+		proofInclusionSenderBefore, posSender, numLeaves)
 
 	buf.Reset() // the buffer needs to be reset
 	_, err = buf.Write(o.HashState)
 	if err != nil {
 		return err
 	}
-	_, proofInclusionReceiverBefore, _, err := merkletree.BuildReaderProof(&buf, o.h, segmentSize, posReceiver)
+
+	_, proofInclusionReceiverBefore, _, err := merkletree.BuildReaderProof(
+		&buf, o.h, segmentSize, posReceiver)
 	if err != nil {
 		return err
 	}
-	merkleProofHelperReceiverBefore := merkle.GenerateProofHelper(proofInclusionReceiverBefore, posReceiver, numLeaves)
+
+	merkleProofHelperReceiverBefore := merkle.GenerateProofHelper(
+		proofInclusionReceiverBefore, posReceiver, numLeaves)
 	o.witnesses.RootHashesBefore[numTransfer].Assign(merkleRootBefore)
+
 	for i := 0; i < len(proofInclusionSenderBefore); i++ {
-		o.witnesses.MerkleProofsSenderBefore[numTransfer][i].Assign(proofInclusionSenderBefore[i])
-		o.witnesses.MerkleProofsReceiverBefore[numTransfer][i].Assign(proofInclusionReceiverBefore[i])
+		o.witnesses.MerkleProofsSenderBefore[numTransfer][i].Assign(
+			proofInclusionSenderBefore[i])
+		o.witnesses.MerkleProofsReceiverBefore[numTransfer][i].Assign(
+			proofInclusionReceiverBefore[i])
 
 		if i < len(proofInclusionReceiverBefore)-1 {
-			o.witnesses.MerkleProofHelperSenderBefore[numTransfer][i].Assign(merkleProofHelperSenderBefore[i])
-			o.witnesses.MerkleProofHelperReceiverBefore[numTransfer][i].Assign(merkleProofHelperReceiverBefore[i])
+			o.witnesses.MerkleProofHelperSenderBefore[numTransfer][i].Assign(
+				merkleProofHelperSenderBefore[i])
+			o.witnesses.MerkleProofHelperReceiverBefore[numTransfer][i].Assign(
+				merkleProofHelperReceiverBefore[i])
 		}
 	}
 
@@ -238,31 +261,42 @@ func (o *Operator) updateState(t Transfer, numTransfer int) error {
 	if err != nil {
 		return err
 	}
-	merkleRootAfer, proofInclusionSenderAfter, _, err := merkletree.BuildReaderProof(&buf, o.h, segmentSize, posSender)
+
+	merkleRootAfer, proofInclusionSenderAfter, _, err := merkletree.BuildReaderProof(
+		&buf, o.h, segmentSize, posSender)
 	if err != nil {
 		return err
 	}
-	merkleProofHelperSenderAfter := merkle.GenerateProofHelper(proofInclusionSenderAfter, posSender, numLeaves)
+
+	merkleProofHelperSenderAfter := merkle.GenerateProofHelper(
+		proofInclusionSenderAfter, posSender, numLeaves)
 
 	buf.Reset() // the buffer needs to be reset
 	_, err = buf.Write(o.HashState)
 	if err != nil {
 		return err
 	}
-	_, proofInclusionReceiverAfter, _, err := merkletree.BuildReaderProof(&buf, o.h, segmentSize, posReceiver)
+	_, proofInclusionReceiverAfter, _, err := merkletree.BuildReaderProof(
+		&buf, o.h, segmentSize, posReceiver)
 	if err != nil {
 		return err
 	}
-	merkleProofHelperReceiverAfter := merkle.GenerateProofHelper(proofInclusionReceiverAfter, posReceiver, numLeaves)
+
+	merkleProofHelperReceiverAfter := merkle.GenerateProofHelper(
+		proofInclusionReceiverAfter, posReceiver, numLeaves)
 
 	o.witnesses.RootHashesAfter[numTransfer].Assign(merkleRootAfer)
 	for i := 0; i < len(proofInclusionSenderAfter); i++ {
-		o.witnesses.MerkleProofsSenderAfter[numTransfer][i].Assign(proofInclusionSenderAfter[i])
-		o.witnesses.MerkleProofsReceiverAfter[numTransfer][i].Assign(proofInclusionReceiverAfter[i])
+		o.witnesses.MerkleProofsSenderAfter[numTransfer][i].Assign(
+			proofInclusionSenderAfter[i])
+		o.witnesses.MerkleProofsReceiverAfter[numTransfer][i].Assign(
+			proofInclusionReceiverAfter[i])
 
 		if i < len(proofInclusionReceiverAfter)-1 {
-			o.witnesses.MerkleProofHelperSenderAfter[numTransfer][i].Assign(merkleProofHelperSenderAfter[i])
-			o.witnesses.MerkleProofHelperReceiverAfter[numTransfer][i].Assign(merkleProofHelperReceiverAfter[i])
+			o.witnesses.MerkleProofHelperSenderAfter[numTransfer][i].Assign(
+				merkleProofHelperSenderAfter[i])
+			o.witnesses.MerkleProofHelperReceiverAfter[numTransfer][i].Assign(
+				merkleProofHelperReceiverAfter[i])
 		}
 	}
 

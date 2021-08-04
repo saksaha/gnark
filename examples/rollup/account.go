@@ -18,6 +18,7 @@ package rollup
 
 import (
 	"encoding/binary"
+	// "fmt"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards/eddsa"
@@ -67,7 +68,6 @@ func (ac *Account) Serialize() []byte {
 	copy(res[96:], buf[:])
 	buf = ac.pubKey.A.Y.Bytes()
 	copy(res[128:], buf[:])
-
 	return res[:]
 }
 

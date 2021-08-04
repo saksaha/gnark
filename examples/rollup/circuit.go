@@ -23,6 +23,7 @@ import (
 	"github.com/consensys/gnark/std/algebra/twistededwards"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/signature/eddsa"
+	// "fmt"
 )
 
 const (
@@ -135,6 +136,12 @@ func (circuit *Circuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) er
 
 	// creation of the circuit
 	for i := 0; i < batchSize; i++ {
+
+		// fmt.Printf("Define(): i: %d, rootHashBefore: %+v, merkleProofSenderBefore: %+v, proofHelperSenderBefore: %+v\n",
+		// i,
+		// circuit.RootHashesBefore[i],
+		// circuit.MerkleProofsSenderBefore[i],
+		// circuit.MerkleProofHelperSenderBefore[i])
 
 		// verify the sender and receiver accounts exist before the update
 		merkle.VerifyProof(cs, hFunc, circuit.RootHashesBefore[i], circuit.MerkleProofsSenderBefore[i][:], circuit.MerkleProofHelperSenderBefore[i][:])

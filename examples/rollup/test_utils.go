@@ -20,13 +20,13 @@ import (
 	"hash"
 	"math/rand"
 	"testing"
+	"fmt"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark-crypto/ecc/bn254/twistededwards/eddsa"
 )
 
 func createAccount(i int) (Account, eddsa.PrivateKey) {
-
 	var acc Account
 	var rnd fr.Element
 	var privkey eddsa.PrivateKey
@@ -42,6 +42,8 @@ func createAccount(i int) (Account, eddsa.PrivateKey) {
 	// TODO handle error
 	privkey, _ = eddsa.GenerateKey(r)
 	acc.pubKey = privkey.PublicKey
+	fmt.Printf("createAccount(): i: %d(%d), pubKey: %v, privkey: %v, accountBalance: %v, nonce: %d\n",
+		i, uint64(i), privkey, acc.pubKey, acc.balance, acc.nonce)
 
 	return acc, privkey
 }
@@ -75,6 +77,8 @@ func createOperator(nbAccounts int) (Operator, []eddsa.PrivateKey) {
 		copy(operator.HashState[operator.h.Size()*i:], buf)
 	}
 
+	fmt.Printf("\ncreateOperator(): state(%d): %d\nhashSate(%d): %d\n",
+		len(operator.State), operator.State, len(operator.HashState), operator.HashState,)
 	return operator, userAccounts
 
 }

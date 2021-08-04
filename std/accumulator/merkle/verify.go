@@ -48,6 +48,7 @@ package merkle
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
+	"fmt"
 )
 
 // leafSum returns the hash created from data inserted to form a leaf.
@@ -129,7 +130,11 @@ func GenerateProofHelper(proofSet [][]byte, proofIndex, numLeaves uint64) []int 
 // true if the first element of the proof set is a leaf of data in the Merkle
 // root. False is returned if the proof set or Merkle root is nil, and if
 // 'numLeaves' equals 0.
-func VerifyProof(cs *frontend.ConstraintSystem, h mimc.MiMC, merkleRoot frontend.Variable, proofSet, helper []frontend.Variable) {
+func VerifyProof(
+	cs *frontend.ConstraintSystem, h mimc.MiMC, merkleRoot frontend.Variable,
+	proofSet, helper []frontend.Variable,
+) {
+	fmt.Printf("\nVerifyProof(): proofSet: %+v\n", proofSet)
 
 	sum := leafSum(cs, h, proofSet[0])
 
